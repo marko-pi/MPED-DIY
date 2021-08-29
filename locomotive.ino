@@ -1,21 +1,18 @@
-// MPED DIY: Basic Multifunction Motor Decoder
+// MPED DIY: Basic Multifunction Locomotive Decoder
 //
-// Author: Marko Pinteric 2019-03-30.
+// Version: 1.0
+// Author: Marko Pinteric 2021-08-30.
 // Based on the work by Alex Shepherd.
 // 
-// This example requires these Arduino Libraries:
-//
-// 1) The NmraDcc Library from: http://mrrwa.org/download/
-//
-// These libraries can be found and installed via the Arduino IDE Library Manager
+// This sketch requires the NmraDcc Library, which can be found and installed via the Arduino IDE Library Manager.
 //
 // This is a simple sketch for controlling motor speed and direction according to NMRA recommendations using PWM and a DRV8870 type H-bridge.
 // It uses the values vStart vHigh, Acc and Dec CV, to regulate the PWM values to the motor, and the value Timout CV, to stop the motor when the signal is lost.
 // It also uses the Headling Function to drive two LEDs for Directional Headlights.
-// Other than that, there's nothing fancy like Lighting Effects or a function matrix or Speed Tables - it's just the basics...
-//
+// Other than that, there's nothing fancy like Lighting Effects or a function matrix or Speed Tables.
 
 #include <NmraDcc.h>
+
 // Uncomment any of the lines below to enable debug messages for different parts of the code
 //#define DEBUG_FUNCTIONS
 //#define DEBUG_SPEED
@@ -85,42 +82,36 @@ struct CVPair
 };
 
 // CV Addresses we will be using
-#define CV_VSTART  2
-#define CV_ACC     3
-#define CV_DEC     4
-#define CV_VHIGH   5
-#define CV_MAN_ID  8
-#define CV_TIMEOUT 11
-#define CV_RESET   120  // master reset
+#define CV_VSTART               2
+#define CV_ACCELERATION_RATE    3
+#define CV_DECELERATION_RATE    4
+#define CV_VHIGH                5
+#define CV_SIGNAL_TIMEOUT       11
+#define CV_DECODER_MASTER_RESET 120
 
 // Default CV Values Table
 CVPair FactoryDefaultCVs [] =
 {
-	// The CV Below defines the Short DCC Address
   {CV_MULTIFUNCTION_PRIMARY_ADDRESS, DEFAULT_DECODER_ADDRESS},
-
-  // Three Step Speed Table
-  {CV_VSTART, 9},
-  {CV_ACC, 5},
-  {CV_DEC, 2},
-  {CV_VHIGH, 255},
-  {CV_MAN_ID, 13},
-  {CV_TIMEOUT, 5},
-  {CV_RESET, 0},
-
-  // These two CVs define the Long DCC Address
   {CV_MULTIFUNCTION_EXTENDED_ADDRESS_MSB, 0},
   {CV_MULTIFUNCTION_EXTENDED_ADDRESS_LSB, DEFAULT_DECODER_ADDRESS},
 
-// ONLY uncomment 1 CV_29_CONFIG line below as approprate
+  {CV_VSTART, 9},
+  {CV_ACCELERATION_RATE, 5},
+  {CV_DECELERATION_RATE, 2},
+  {CV_VHIGH, 255},
+  {CV_VERSION_ID, 1},
+  {CV_MANUFACTURER_ID, MAN_ID_DIY},
+  {CV_SIGNAL_TIMEOUT, 5},
+  {CV_DECODER_MASTER_RESET, 0},
+
+// ONLY uncomment one CV_29_CONFIG line below as approprate
 //  {CV_29_CONFIG,                                      0}, // Short Address 14 Speed Steps
   {CV_29_CONFIG,                       CV29_F0_LOCATION}, // Short Address 28/128 Speed Steps
 //  {CV_29_CONFIG, CV29_EXT_ADDRESSING | CV29_F0_LOCATION}, // Long  Address 28/128 Speed Steps  
 };
 
 NmraDcc  Dcc ;
-
-uint8_t FactoryDefaultCVIndex = 0;
 
 // This call-back function is called when a CV Value changes so we can update CVs we're using
 void notifyCVChange( uint16_t CV, uint8_t Value)
@@ -131,11 +122,11 @@ void notifyCVChange( uint16_t CV, uint8_t Value)
       vStart = Value;
       break;
       
-    case CV_ACC:
+    case CV_ACCELERATION_RATE:
       Acc = Value;
       break;
 
-    case CV_DEC:
+    case CV_DECELERATION_RATE:
       Dec = Value;
       break;
 
@@ -143,14 +134,14 @@ void notifyCVChange( uint16_t CV, uint8_t Value)
       vHigh = Value;
       break;
 
-    case CV_TIMEOUT:
+    case CV_SIGNAL_TIMEOUT:
       Timeout = Value;
+      timeSignal = 0xFFFFFFFF;
       break;
-
-    timeSignal = 0xFFFFFFFF;
   }
 }
 
+uint8_t FactoryDefaultCVIndex = 0;
 void notifyCVResetFactoryDefault()
 {
   // Make FactoryDefaultCVIndex non-zero and equal to num CV's to be reset 
@@ -236,7 +227,7 @@ void notifyDccSpeed( uint16_t Addr, DCC_ADDR_TYPE AddrType, uint8_t newSpeed, DC
       #endif
 
     }
-    // change immediately
+    // change PWM immediately
     timePwm = millis();
 
     lastSpeed = newSpeed;
@@ -285,7 +276,6 @@ void notifyDccMsg( DCC_MSG * Msg)
 // This call-back function is called by the NmraDcc library when a DCC ACK needs to be sent
 // Calling this function should cause an increased 60ma current drain on the power supply for 6ms to ACK a CV Read
 // So we will just turn the motor on for 8ms and then turn it off again.
-
 void notifyCVAck(void)
 {
   #ifdef DEBUG_DCC_ACK
@@ -314,24 +304,22 @@ void setup()
   pinMode(MOTOR_PIN_FWD, OUTPUT);
   pinMode(MOTOR_PIN_REV, OUTPUT);
 
-  
   // Setup which External Interrupt, the Pin it's associated with that we're using and enable the Pull-Up 
   Dcc.pin(DCC_PIN, 0);
-  
-  Dcc.init( MAN_ID_DIY, 10, FLAGS_MY_ADDRESS_ONLY | FLAGS_AUTO_FACTORY_DEFAULT, 0 );
 
-  // Uncomment to force CV Reset to Factory Defaults
-//  notifyCVResetFactoryDefault();
+  // Call the main DCC Init function to enable the DCC Receiver
+  //!!!!!!!!!!!!!!!!!! FLAGS_AUTO_FACTORY_DEFAULT: Call notifyCVResetFactoryDefault() if CV 7 & 8 == 255
+  Dcc.init( MAN_ID_DIY, 1, FLAGS_MY_ADDRESS_ONLY | FLAGS_AUTO_FACTORY_DEFAULT, 0 );
 
-  // master reset
-  if(Dcc.getCV(CV_RESET) == CV_RESET) notifyCVResetFactoryDefault();
+  // trigger decoder master reset
+  if(Dcc.getCV(CV_DECODER_MASTER_RESET) == CV_DECODER_MASTER_RESET) notifyCVResetFactoryDefault();
   
   // Read the current CV values
   vStart = Dcc.getCV(CV_VSTART);
-  Acc = Dcc.getCV(CV_ACC);
-  Dec = Dcc.getCV(CV_DEC);
+  Acc = Dcc.getCV(CV_ACCELERATION_RATE);
+  Dec = Dcc.getCV(CV_DECELERATION_RATE);
   vHigh = Dcc.getCV(CV_VHIGH);
-  Timeout = Dcc.getCV(CV_TIMEOUT);
+  Timeout = Dcc.getCV(CV_SIGNAL_TIMEOUT);
 }
 
 void loop()
