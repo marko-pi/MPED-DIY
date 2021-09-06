@@ -10,5 +10,9 @@ So far, two decoders have been designed:
 1. **Basic Accessory Turnout Decoder**: the idea is to have a miniature decoder attached to each individual turnout. The decoder is to draw power and commands directly from the turnout tracks. This is useful for those model railroaders who do not have a fixed and permanent layout so that the position of a single turnout can change.
 ![dt1](https://user-images.githubusercontent.com/18025812/131260893-7c2ca922-2275-4c6e-8305-605aa7da473d.png)
 
+![dt2](https://user-images.githubusercontent.com/18025812/132223622-297b758d-45ed-4417-a502-b3787ff944e1.png)
+![dt3](https://user-images.githubusercontent.com/18025812/132223638-f788c038-288e-43d5-8e33-84fa1101d0c8.png)
+
+
 2. **Basic Multifunction Locomotive Decoder**: The idea is to have a miniature decoder that uses all the NMRA mandated and recommended CVs (motor acceleration, deceleration, signal timeout, manufacturer ID), as well as CV120 for master reset.
 ![dl1](https://user-images.githubusercontent.com/18025812/131259720-8a87d864-df40-4d0d-986d-fecaba1cd111.png)
