@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+<?xml-stylesheet type="text/xsl" href="../XSLT/decoder.xsl"?>
+<!-- Copyright (C) JMRI 2002 - 2021 All rights reserved                     -->
+<!--                                                                        -->
+<!-- JMRI is free software; you can redistribute it and/or modify it under  -->
+<!-- the terms of version 2 of the GNU General Public License as published  -->
+<!-- by the Free Software Foundation. See the "COPYING" file for a copy     -->
+<!-- of this license.                                                       -->
+<!--                                                                        -->
+<!-- JMRI is distributed in the hope that it will be useful, but WITHOUT    -->
+<!-- ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or  -->
+<!-- FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License  -->
+<!-- for more details.                                                      -->
+<decoder-config xmlns:xi="http://www.w3.org/2001/XInclude" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://jmri.org/xml/schema/decoder.xsd" showEmptyPanes="no" >
+    <version version="1" author="marko@pinteric.com" lastUpdated="20200201"/>
+    <decoder>
+        <family name="MPED DIY" mfg="Public-domain and DIY" >
+            <model model="Basic Multifunction Locomotive Decoder" productID="11" />
+            <model model="Basic Accessory Turnout Decoder" productID="61" />
+        </family>
+	<programming direct="yes" paged="yes" register="yes" ops="yes">
+            <capability>
+                <name>Ops Mode Accessory Programming</name>
+                <parameter name="Address Type">accessory</parameter>
+            </capability>
+        </programming>
+        
+        <variables>
+            <!-- multifunction decoder addresses -->
+            <variables include="11">
+                <xi:include href="http://jmri.org/xml/decoders/nmra/shortAndLongAddress.xml"/>
+            </variables>
+            <!-- accessory decoder addresses -->
+            <variables include="61">
+                <variable CV="1,9" mask="VVVVVVVV XXXXXVVV" item="Short Address" default="01">
+                    <splitVal min="1" max="2044"/>
+                    <label>Primary Decoder Address</label>
+                </variable>
+                <variable CV="17" item="Long Address" default="1">
+                    <longAddressVal/>
+                    <label>Extended Decoder Address</label>
+                </variable>
+                <variable CV="121,122" mask="VVVVVVVV XXXXXVVV" item="Supplementary Address" default="01">
+                    <splitVal min="1" max="2047" />
+                    <label>Supplementary Decoder Address</label>
+                </variable>
+            </variables>
+
+            <variable CV="2" item="Vstart" default="9" tooltip="sets the motor voltage at Speed Step 1, range 0-255" include="11">
+                <decVal max="255"/>
+                <label>Start voltage</label>
+                <comment>Range 0-255, 0 in CV 2, 6, 5 produces straight line acceleration</comment>
+            </variable>
+            <variable CV="3" item="Accel" default="5" tooltip="Sets the acceleration rate (delay or momentum), range 0-255" include="11">
+                <decVal max="255"/>
+                <label>Acceleration Rate</label>
+                <comment>Range 0-255</comment>
+            </variable>
+            <variable CV="4" item="Decel" default="2" tooltip="Sets the deceleration rate (delay or momentum), range 0-255" include="11">
+                <decVal max="255"/>
+                <label>Deceleration Rate</label>
+                <comment>Range 0-255</comment>
+            </variable>
+            <variable CV="5" item="Vhigh" default="255" tooltip="sets the motor voltage at top throttle Speed Setting, range 0(default)-255" include="11">
+                <decVal max="255"/>
+                <label>Maximum Voltage</label>
+                <comment>Range 0-255</comment>
+            </variable>
+            <variable CV="7" readOnly="yes" item="Decoder Version" default="1" tooltip="Decoder Version, Read Only">
+                <decVal/>
+                <label>Decoder Version</label>
+            </variable>
+            <variable CV="8" readOnly="yes" item="Manufacturer" default="13" tooltip="Decoder Maker, Read Only">
+                <decVal/>
+                <label>Manufacturer ID</label>
+            </variable>
+            <variable CV="11" item="Signal timeout" default="5"  tooltip="Signal timeout" include="11">
+                <decVal max="255"/>
+                <label>Signal timeout</label>
+                <comment>Range 0-255</comment>
+            </variable>
+            <!-- CV=29 -->
+            <!--xi:include href="http://jmri.org/xml/decoders/nmra/shortAndLongAddress.xml"/-->
+            <variable CV="29" mask="VXXXXXXX" item="Is Accessory Decoder" default="1"  include="61">
+                <decVal/>
+            </variable>
+            <variable CV="29" mask="XVXXXXXX" item="Uses Output Address" default="1" include="61">
+                <decVal/>
+            </variable>
+            <variable CV="29" mask="XXXXXXVX" item="Uses 28/128 speed step mode" default="1"  include="11">
+                <decVal/>
+            </variable>
+	    <variable item="Address Format" CV="29" mask="XXVXXXXX" include="11">
+                <enumVal>
+                    <enumChoice choice="Short (one byte) address">
+                    </enumChoice>
+                    <enumChoice choice="Long (two byte) address">
+                    </enumChoice>
+                </enumVal>
+                <label>Address Format</label>
+            </variable>
+            <!--xi:include href="http://jmri.org/xml/decoders/nmra/cv29direction.xml" /-->
+            <!--xi:include href="http://jmri.org/xml/decoders/nmra/cv29speedSteps.xml" /-->
+            <!--xi:include href="http://jmri.org/xml/decoders/nmra/cv29analog.xml" /-->
+            <!--xi:include href="http://jmri.org/xml/decoders/nmra/cv29table3-28.xml" /-->
+            <variable CV="33" item="Close time" default="5"  tooltip="Time to close turnout" include="61">
+                <decVal max="255"/>
+                <label>Close time</label>
+                <comment>Range 0-255</comment>
+            </variable>
+            <variable CV="34" item="Throw time" default="5"  tooltip="Time to throw turnout" include="61">
+                <decVal max="255"/>
+                <label>Throw time</label>
+                <comment>Range 0-255</comment>
+            </variable>
+            <variable CV="35" item="Blink time" default="25"  tooltip="Period of LED blinking" include="61">
+                <decVal max="255"/>
+                <label>Blink time</label>
+                <comment>Range 0-255</comment>
+            </variable>
+            <variable CV="120" item="Master reset" default="0" tooltip="resets all CVs to defaults">
+                <decVal max="255"/>
+                <label>Master reset</label>
+                <comment>Range 0-255</comment>
+            </variable>
+        </variables>
+        <resets>
+            <factReset label="Reset All CVs" CV="120" default="120">
+            </factReset>
+        </resets>
+    </decoder>
+    <pane include="61">
+        <name>Turnout decoder</name>
+        <column>
+            <label>
+                <text> </text>
+            </label>
+            <label>
+                <text>Supplementary and Extended Decoder Address should have the same value.</text>
+            </label>
+            <label>
+                <text> </text>
+            </label>
+            <separator/>
+            <label>
+                <text> </text>
+            </label>
+            <display item="Supplementary Address"/>
+            <label>
+            </label>
+            <display item="Long Address"/>
+            <label>
+                <text> </text>
+            </label>
+            <separator/>
+            <label>
+                <text> </text>
+            </label>
+            <display item="Close time"/>
+            <display item="Throw time"/>
+            <display item="Blink time"/>
+        </column>
+    </pane>
+</decoder-config>
