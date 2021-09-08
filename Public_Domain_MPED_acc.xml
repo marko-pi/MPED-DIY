@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<?xml-stylesheet type="text/xsl" href="../XSLT/decoder.xsl"?>
+<!-- Copyright (C) JMRI 2021 All rights reserved                            -->
+<!--                                                                        -->
+<!-- JMRI is free software; you can redistribute it and/or modify it under  -->
+<!-- the terms of version 2 of the GNU General Public License as published  -->
+<!-- by the Free Software Foundation. See the "COPYING" file for a copy     -->
+<!-- of this license.                                                       -->
+<!--                                                                        -->
+<!-- JMRI is distributed in the hope that it will be useful, but WITHOUT    -->
+<!-- ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or  -->
+<!-- FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License  -->
+<!-- for more details.                                                      -->
+<decoder-config xmlns:xi="http://www.w3.org/2001/XInclude" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://jmri.org/xml/schema/decoder.xsd" showEmptyPanes="no" >
+	<version version="1" author="marko@pinteric.com" lastUpdated="20200908"/>
+	<decoder>
+		<family name="MPED DIY" mfg="Public-domain and DIY" lowVersionID="1" comment="DCC Accessory Decoder for a single Turnout" >
+			<model model="Basic Accessory Turnout Decoder" />
+		</family>
+		<programming direct="yes" paged="yes" register="yes" ops="yes" >
+			<capability>
+				<name>Ops Mode Accessory Programming</name>
+				<parameter name="Address Type">signal</parameter>
+				<parameter name="Delay">500</parameter>
+			</capability>
+		</programming>
+		<variables>
+			<variable CV="1" mask="VVVVVVVV" default="1" tooltip="Range 1-2044" item="Long Address">
+				<splitVal highCV="9" upperMask="XXXXXVVV"/>
+				<label>Primary Decoder Address (1-2044)</label>
+			</variable>
+			<variable label="Version ID" item="Decoder Version" CV="7" readOnly="yes" default="1" >
+				<decVal/>
+			</variable>
+			<variable label="Manufacturer ID" item="Manufacturer" CV="8" readOnly="yes" default="13">
+				<decVal/>
+			</variable>
+			<variable CV="121" mask="VVVVVVVV" item="Alt OPS Mode Address" default="0">
+				<splitVal highCV="122" upperMask="XXXXXVVV"  min="0" max="2047" />
+				<label>Alt OPS Mode Multifunction Decoder Address</label>
+			</variable>
+			<variable CV="33" item="Close time" default="5"  tooltip="Time to close turnout" >
+				<decVal max="255"/>
+				<label>Close time</label>
+				<comment>Range 0-255</comment>
+			</variable>
+			<variable CV="34" item="Throw time" default="5"  tooltip="Time to throw turnout" >
+				<decVal max="255"/>
+				<label>Throw time</label>
+				<comment>Range 0-255</comment>
+			</variable>
+			<variable CV="35" item="Blink time" default="25"  tooltip="Period of LED blinking" >
+				<decVal max="255"/>
+				<label>Blink time</label>
+				<comment>Range 0-255</comment>
+			</variable>
+		</variables>
+		<resets>
+			<factReset label="Reset All CVs" CV="8" default="8"/>
+		</resets>
+	</decoder>
+	<pane>
+		<name>Turnout Driver Timings</name>
+		<column>
+			<display item="Alt OPS Mode Address" label="Alt OPS Mode Multifunction Decoder Address" />
+			<display item="Close time" label="Turnout Close Pulse Period (*10ms)" />
+			<display item="Throw time" label="Turnout Throw Pulse Period (*10ms)" />
+			<display item="Blink time" label="LED Blink Period (*10ms)" />
+		</column>
+	</pane>
+</decoder-config>

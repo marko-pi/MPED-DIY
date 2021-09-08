@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<?xml-stylesheet type="text/xsl" href="../XSLT/decoder.xsl"?>
+<!-- Copyright (C) JMRI 2021 All rights reserved                            -->
+<!--                                                                        -->
+<!-- JMRI is free software; you can redistribute it and/or modify it under  -->
+<!-- the terms of version 2 of the GNU General Public License as published  -->
+<!-- by the Free Software Foundation. See the "COPYING" file for a copy     -->
+<!-- of this license.                                                       -->
+<!--                                                                        -->
+<!-- JMRI is distributed in the hope that it will be useful, but WITHOUT    -->
+<!-- ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or  -->
+<!-- FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License  -->
+<!-- for more details.                                                      -->
+<decoder-config xmlns:xi="http://www.w3.org/2001/XInclude" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://jmri.org/xml/schema/decoder.xsd" showEmptyPanes="no" >
+	<version version="1" author="marko@pinteric.com" lastUpdated="20200908"/>
+	<decoder>
+		<family name="MPED DIY" mfg="Public-domain and DIY" lowVersionID="1" >
+			<model model="Basic Multifunction Locomotive Decoder" />
+		</family>
+		<programming direct="yes" paged="yes" register="yes" ops="yes" />
+		<variables>
+			<variable CV="2" item="Vstart" default="9" tooltip="sets the motor voltage at Speed Step 1, range 0-255">
+				<decVal max="255"/>
+				<label>Start voltage</label>
+				<comment>Range 0-255, 0 in CV 2, 6, 5 produces straight line acceleration</comment>
+			</variable>
+			<variable CV="3" item="Accel" default="5" tooltip="Sets the acceleration rate (delay or momentum), range 0-255">
+				<decVal max="255"/>
+				<label>Acceleration Rate</label>
+				<comment>Range 0-255</comment>
+			</variable>
+			<variable CV="4" item="Decel" default="2" tooltip="Sets the deceleration rate (delay or momentum), range 0-255">
+				<decVal max="255"/>
+				<label>Deceleration Rate</label>
+				<comment>Range 0-255</comment>
+			</variable>
+			<variable CV="5" item="Vhigh" default="255" tooltip="sets the motor voltage at top throttle Speed Setting, range 0(default)-255">
+				<decVal max="255"/>
+				<label>Maximum Voltage</label>
+				<comment>Range 0-255</comment>
+			</variable>
+			<variable CV="11" item="Signal timeout" default="5"  tooltip="Signal timeout" include="11">
+				<decVal max="255"/>
+				<label>Signal timeout</label>
+				<comment>Range 0-255</comment>
+			</variable>
+			<!-- CV=29 -->
+			<xi:include href="http://jmri.org/xml/decoders/nmra/shortAndLongAddress.xml"/>
+			<!--xi:include href="http://jmri.org/xml/decoders/nmra/cv29direction.xml" /-->
+			<!--xi:include href="http://jmri.org/xml/decoders/nmra/cv29speedSteps.xml" /-->
+			<!--xi:include href="http://jmri.org/xml/decoders/nmra/cv29analog.xml" /-->
+			<!--xi:include href="http://jmri.org/xml/decoders/nmra/cv29table3-28.xml" /-->
+		</variables>
+		<resets>
+			<factReset label="Reset All CVs" CV="8" default="8"/>
+		</resets>
+	</decoder>
+</decoder-config>
