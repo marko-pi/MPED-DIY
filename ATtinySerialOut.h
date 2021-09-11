@@ -99,7 +99,7 @@
 
 #else // Tiny X4 + X5 Digispark board
 #  ifndef TX_PIN
-#define TX_PIN PB4 // (package pin 7 on Tiny85) - can use one of PB0 to PB4 (+PB5) here
+#define TX_PIN PB4 // (package pin 3 on Tiny85) - can use one of PB0 to PB4 (+PB5) here
 #  endif
 #endif
 
