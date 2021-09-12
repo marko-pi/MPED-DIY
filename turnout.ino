@@ -38,7 +38,8 @@
 #define PIN_DEBUG LED_THROW            // pin for debugging
 #define ENABLE_DCC_ACK_PIN  PIN_CLOSE  // pin to generate a DCC ACK Pulse
 #ifdef ENABLE_DEBUG
-#include "ATtinySerialOut.h"
+#define TX_PIN PIN_DEBUG
+#include "ATtinySerialOut.hpp"
 #endif 
 #endif 
 
