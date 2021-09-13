@@ -39,7 +39,7 @@
 #define ENABLE_DCC_ACK_PIN  PIN_CLOSE  // pin to generate a DCC ACK Pulse
 #ifdef ENABLE_DEBUG
 #define TX_PIN PIN_DEBUG
-#include "ATtinySerialOut.hpp"
+#include <ATtinySerialOut.hpp>
 #endif 
 #endif 
 
