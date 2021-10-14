@@ -11,5 +11,7 @@ So far, two decoders have been designed:
 ![dt1](https://user-images.githubusercontent.com/18025812/131260893-7c2ca922-2275-4c6e-8305-605aa7da473d.png)
 ![dt1_pcb](https://user-images.githubusercontent.com/18025812/133302838-1e73dd06-535a-4579-9187-ca837db30098.png)
 
+For more instructions, please refer to [this forum entry](https://model-railroad-hobbyist.com/node/43451).
+
 2. **Basic Multifunction Locomotive Decoder**: The idea is to have a miniature decoder that uses all the NMRA mandated and recommended CVs (motor acceleration, deceleration, signal timeout, manufacturer ID), as well as CV120 for master reset.
 ![dl1](https://user-images.githubusercontent.com/18025812/131259720-8a87d864-df40-4d0d-986d-fecaba1cd111.png)
