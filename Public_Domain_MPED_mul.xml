@@ -15,11 +15,11 @@
 	<version version="1" author="marko@pinteric.com" lastUpdated="20200908"/>
 	<decoder>
 		<family name="MPED DIY" mfg="Public-domain and DIY" lowVersionID="1" >
-			<model model="Basic Multifunction Locomotive Decoder" />
+			<model model="MPED Basic Locomotive" />
 		</family>
 		<programming direct="yes" paged="yes" register="yes" ops="yes" />
 		<variables>
-			<variable CV="2" item="Vstart" default="9" tooltip="sets the motor voltage at Speed Step 1, range 0-255">
+			<variable CV="2" item="Vstart" default="3" tooltip="sets the motor voltage at Speed Step 1, range 0-255">
 				<decVal max="255"/>
 				<label>Start voltage</label>
 				<comment>Range 0-255, 0 in CV 2, 6, 5 produces straight line acceleration</comment>
@@ -34,12 +34,17 @@
 				<label>Deceleration Rate</label>
 				<comment>Range 0-255</comment>
 			</variable>
-			<variable CV="5" item="Vhigh" default="255" tooltip="sets the motor voltage at top throttle Speed Setting, range 0(default)-255">
+			<variable CV="5" item="Vhigh" default="0" tooltip="sets the motor voltage at top throttle Speed Setting, range 0(default)-255">
 				<decVal max="255"/>
 				<label>Maximum Voltage</label>
 				<comment>Range 0-255</comment>
 			</variable>
-			<variable CV="11" item="Signal timeout" default="5"  tooltip="Signal timeout" include="11">
+			<variable CV="6" item="Vmid" default="0" tooltip="sets the motor voltage at midrange throttle Speed Setting, range 0(default)-255">
+				<decVal max="255"/>
+				<label>Midpoint Voltage</label>
+				<comment>Range 0-255, 0 in CV 2, 6, 5 produces straight line acceleration</comment>
+			</variable>
+			<variable CV="11" item="Signal timeout" default="5"  tooltip="Signal timeout">
 				<decVal max="255"/>
 				<label>Signal timeout</label>
 				<comment>Range 0-255</comment>
@@ -47,12 +52,53 @@
 			<!-- CV=29 -->
 			<xi:include href="http://jmri.org/xml/decoders/nmra/shortAndLongAddress.xml"/>
 			<!--xi:include href="http://jmri.org/xml/decoders/nmra/cv29direction.xml" /-->
-			<!--xi:include href="http://jmri.org/xml/decoders/nmra/cv29speedSteps.xml" /-->
+			<xi:include href="http://jmri.org/xml/decoders/nmra/cv29speedSteps.xml" />
 			<!--xi:include href="http://jmri.org/xml/decoders/nmra/cv29analog.xml" /-->
-			<!--xi:include href="http://jmri.org/xml/decoders/nmra/cv29table3-28.xml" /-->
+			<xi:include href="http://jmri.org/xml/decoders/nmra/cv29table3-28.xml" />
+			<!--xi:include href="http://jmri.org/xml/decoders/nmra/cv67speedTableBasic.xml"/-->
+
+                        <variable item="Speed Table" CV="67">
+				<speedTableVal />
+				<label>Speed Table</label>
+			</variable>
+			<variable CV="67" item="CV 67 default" default="12"><decVal/></variable>
+			<variable CV="68" item="CV 68 default" default="21"><decVal/></variable>
+			<variable CV="69" item="CV 69 default" default="30"><decVal/></variable>
+			<variable CV="70" item="CV 70 default" default="39"><decVal/></variable>
+			<variable CV="71" item="CV 71 default" default="48"><decVal/></variable>
+			<variable CV="72" item="CV 72 default" default="57"><decVal/></variable>
+			<variable CV="73" item="CV 73 default" default="66"><decVal/></variable>
+			<variable CV="74" item="CV 74 default" default="75"><decVal/></variable>
+			<variable CV="75" item="CV 75 default" default="84"><decVal/></variable>
+			<variable CV="76" item="CV 76 default" default="93"><decVal/></variable>
+			<variable CV="77" item="CV 77 default" default="102"><decVal/></variable>
+			<variable CV="78" item="CV 78 default" default="111"><decVal/></variable>
+			<variable CV="79" item="CV 79 default" default="120"><decVal/></variable>
+			<variable CV="80" item="CV 80 default" default="129"><decVal/></variable>
+			<variable CV="81" item="CV 81 default" default="138"><decVal/></variable>
+			<variable CV="82" item="CV 82 default" default="147"><decVal/></variable>
+			<variable CV="83" item="CV 83 default" default="156"><decVal/></variable>
+			<variable CV="84" item="CV 84 default" default="165"><decVal/></variable>
+			<variable CV="85" item="CV 85 default" default="174"><decVal/></variable>
+			<variable CV="86" item="CV 86 default" default="183"><decVal/></variable>
+			<variable CV="87" item="CV 87 default" default="192"><decVal/></variable>
+			<variable CV="88" item="CV 88 default" default="201"><decVal/></variable>
+			<variable CV="89" item="CV 89 default" default="210"><decVal/></variable>
+			<variable CV="90" item="CV 90 default" default="219"><decVal/></variable>
+			<variable CV="91" item="CV 91 default" default="228"><decVal/></variable>
+			<variable CV="92" item="CV 92 default" default="237"><decVal/></variable>
+			<variable CV="93" item="CV 93 default" default="246"><decVal/></variable>
+			<variable CV="94" item="CV 94 default" default="255"><decVal/></variable>
 		</variables>
 		<resets>
 			<factReset label="Reset All CVs" CV="8" default="8"/>
 		</resets>
 	</decoder>
+	<pane>
+		<name>MPED</name>
+		<column>
+			<display item="Signal timeout"/>
+		</column>
+	</pane>
+
 </decoder-config>
