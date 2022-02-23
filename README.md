@@ -15,6 +15,6 @@ For more instructions, please refer to [this forum entry](https://forum.mrhmag.c
 
 2. **Basic Multifunction Locomotive Decoder**: The idea is to have a miniature decoder that uses all the NMRA mandated and recommended CVs (mprimary address, Vstart, manufacturer ID and version, packet time-out value, configuration data), as well as extended address, acceleration and deceleration rate, Vmid, Vhigh and speed table.
 ![dl1](https://user-images.githubusercontent.com/18025812/131259720-8a87d864-df40-4d0d-986d-fecaba1cd111.png)
-
+![dl1_pcb](https://user-images.githubusercontent.com/18025812/155276755-71e61b43-3484-4a25-9fba-a345554859e4.png)
 
 For more instructions, please refer to [this forum entry](https://forum.mrhmag.com/post/miniature-locomotive-decoder-12277807).
