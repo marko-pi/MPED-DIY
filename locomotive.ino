@@ -26,26 +26,29 @@
 #define DEBUG_PRINT
 #endif
 
+// Actual number of speed steps in one direction 9 * 28 = 2 * 126
+#define SPEED_STEPS 252
+
 // This is the default DCC Address
 #define DEFAULT_DECODER_ADDRESS 3
 
 // This section defines the Arduino UNO Pins to use 
-#ifdef __AVR_ATmega328P__ 
+#if defined(__AVR_ATmega328__) or defined(__AVR_ATmega328P__)
 
-#define DCC_PIN     2
+#define DCC_PIN       2
 
-#define LED_PIN_FWD 9
-#define LED_PIN_REV 10
+#define LED_PIN_FWD   9
+#define LED_PIN_REV  10
 #define MOTOR_PIN_FWD 5
 #define MOTOR_PIN_REV 6
 
 // This section defines the Arduino ATTiny85 Pins to use 
-#elif ARDUINO_AVR_ATTINYX5 
+#elif defined(ARDUINO_AVR_ATTINYX5) 
 
-#define DCC_PIN     2
+#define DCC_PIN       2
 
-#define LED_PIN_FWD 0
-#define LED_PIN_REV 1
+#define LED_PIN_FWD   0
+#define LED_PIN_REV   1
 #define MOTOR_PIN_FWD 3
 #define MOTOR_PIN_REV 4
 
@@ -60,19 +63,23 @@ uint8_t lastDirection = 1;
 uint8_t newSpeed;
 uint8_t lastSpeed = 0;
 uint8_t numSpeedSteps = SPEED_STEP_128;
-int16_t currentPwm = 0;
-int16_t targetPwm = 0;
+int16_t currentStep = 0;
+int16_t targetStep = 0;
+uint8_t absStep;
+uint8_t tableElement;
+uint8_t motorPwm;
 uint16_t periodAcc;                // time in ms between two PWM changes when accelerating 
 uint16_t periodDec;                // time in ms between two PWM changes when decelerating 
 uint32_t timePwm = 0;              // time in ms for next PWM change
 bool changeLight = false;          // change FWD/REV light
+bool speedTableSelect = false;     // use speed table
 uint32_t timeSignal = 0xFFFFFFFF;  // time in ms to expect DCC Signal (speed packet), 0xFFFFFFFF means no Signal
 
 uint8_t vStart;
-uint8_t Dec;
-uint8_t Acc;
 uint8_t vHigh;
-uint32_t Timeout;       // large number for calculation purposes
+uint8_t vMid;
+uint32_t Timeout;                   // large number for calculation purposes
+uint8_t speedTable[29];
 
 // Structure for CV Values Table
 struct CVPair
@@ -86,29 +93,60 @@ struct CVPair
 #define CV_ACCELERATION_RATE    3
 #define CV_DECELERATION_RATE    4
 #define CV_VHIGH                5
+#define CV_VMID                 6
 #define CV_SIGNAL_TIMEOUT       11
-#define CV_DECODER_MASTER_RESET 120
+#define CV_SPEED_TABLE          67
+// #define CV_DECODER_MASTER_RESET 120
 
 // Default CV Values Table
 CVPair FactoryDefaultCVs [] =
 {
   {CV_MULTIFUNCTION_PRIMARY_ADDRESS, DEFAULT_DECODER_ADDRESS},
   {CV_MULTIFUNCTION_EXTENDED_ADDRESS_MSB, 0},
-  {CV_MULTIFUNCTION_EXTENDED_ADDRESS_LSB, DEFAULT_DECODER_ADDRESS},
+  {CV_MULTIFUNCTION_EXTENDED_ADDRESS_LSB, 0},
 
-  {CV_VSTART, 9},
-  {CV_ACCELERATION_RATE, 5},
-  {CV_DECELERATION_RATE, 2},
-  {CV_VHIGH, 255},
+  {CV_VSTART, 3},                   // Zimo=1 Lais=0(9)
+  {CV_ACCELERATION_RATE, 5},        // Zimo=2 Lais=1(3)
+  {CV_DECELERATION_RATE, 2},        // Zimo=1 Lais=1(3)
+  {CV_VHIGH, 0},                    // Zimo=1 Lais=0(0)
+  {CV_VMID, 0},                     // Zimo=1 Lais=0(-)
   {CV_VERSION_ID, 1},
   {CV_MANUFACTURER_ID, MAN_ID_DIY},
   {CV_SIGNAL_TIMEOUT, 5},
-  {CV_DECODER_MASTER_RESET, 0},
 
 // ONLY uncomment one CV_29_CONFIG line below as approprate
 //  {CV_29_CONFIG,                                      0}, // Short Address 14 Speed Steps
   {CV_29_CONFIG,                       CV29_F0_LOCATION}, // Short Address 28/128 Speed Steps
 //  {CV_29_CONFIG, CV29_EXT_ADDRESSING | CV29_F0_LOCATION}, // Long  Address 28/128 Speed Steps  
+
+  {CV_SPEED_TABLE, 12},
+  {CV_SPEED_TABLE+1, 21},
+  {CV_SPEED_TABLE+2, 30},
+  {CV_SPEED_TABLE+3, 39},
+  {CV_SPEED_TABLE+4, 48},
+  {CV_SPEED_TABLE+5, 57},
+  {CV_SPEED_TABLE+6, 66},
+  {CV_SPEED_TABLE+7, 75},
+  {CV_SPEED_TABLE+8, 84},
+  {CV_SPEED_TABLE+9, 93},
+  {CV_SPEED_TABLE+10, 102},
+  {CV_SPEED_TABLE+11, 111},
+  {CV_SPEED_TABLE+12, 120},
+  {CV_SPEED_TABLE+13, 129},
+  {CV_SPEED_TABLE+14, 138},
+  {CV_SPEED_TABLE+15, 147},
+  {CV_SPEED_TABLE+16, 156},
+  {CV_SPEED_TABLE+17, 165},
+  {CV_SPEED_TABLE+18, 174},
+  {CV_SPEED_TABLE+19, 183},
+  {CV_SPEED_TABLE+20, 192},
+  {CV_SPEED_TABLE+21, 201},
+  {CV_SPEED_TABLE+22, 210},
+  {CV_SPEED_TABLE+23, 219},
+  {CV_SPEED_TABLE+24, 228},
+  {CV_SPEED_TABLE+25, 237},
+  {CV_SPEED_TABLE+26, 246},
+  {CV_SPEED_TABLE+27, 255},
 };
 
 NmraDcc  Dcc ;
@@ -120,25 +158,36 @@ void notifyCVChange( uint16_t CV, uint8_t Value)
   {
     case CV_VSTART:
       vStart = Value;
+      speedTable[0] = Value;
       break;
       
     case CV_ACCELERATION_RATE:
-      Acc = Value;
+      periodAcc = (uint16_t) Value*896/SPEED_STEPS;
+
       break;
 
     case CV_DECELERATION_RATE:
-      Dec = Value;
+      periodDec = (uint16_t) Value*896/SPEED_STEPS;
       break;
 
     case CV_VHIGH:
       vHigh = Value;
       break;
 
+    case CV_VMID:
+      vMid = Value;
+      break;
+
+    case CV_29_CONFIG:
+      if((Value & 0b00010000) == 0) speedTableSelect = false;
+      else speedTableSelect = true;
+
     case CV_SIGNAL_TIMEOUT:
       Timeout = Value;
       timeSignal = 0xFFFFFFFF;
       break;
   }
+  if ((CV>=67) and (CV<=94)) speedTable[CV-66] = Value;
 }
 
 uint8_t FactoryDefaultCVIndex = 0;
@@ -146,12 +195,14 @@ void notifyCVResetFactoryDefault()
 {
   // Make FactoryDefaultCVIndex non-zero and equal to num CV's to be reset 
   // to flag to the loop() function that a reset to Factory Defaults needs to be done
-  FactoryDefaultCVIndex = sizeof(FactoryDefaultCVs)/sizeof(CVPair);
+  if (FactoryDefaultCVIndex == 0) FactoryDefaultCVIndex = sizeof(FactoryDefaultCVs)/sizeof(CVPair);
 };
 
 // This call-back function is called whenever we receive a DCC Speed packet for our address 
 void notifyDccSpeed( uint16_t Addr, DCC_ADDR_TYPE AddrType, uint8_t newSpeed, DCC_DIRECTION newDirection, DCC_SPEED_STEPS numSpeedSteps )
 {
+  if (Timeout != 0) timeSignal = millis() + 1000 * Timeout;
+
   #ifdef DEBUG_SPEED
   Serial.print("notifyDccSpeed: Addr: ");
   Serial.print(Addr,DEC);
@@ -164,25 +215,22 @@ void notifyDccSpeed( uint16_t Addr, DCC_ADDR_TYPE AddrType, uint8_t newSpeed, DC
   Serial.println( (newDirection == DCC_DIR_FWD) ? "Forward" : "Reverse" );
   #endif
 
-  if (Timeout != 0) timeSignal = millis() + 1000 * Timeout;
-
   if((lastSpeed != newSpeed) || (lastDirection != newDirection))
   {
-    // Calculate target PWM value in the range -255 ... 255   
     uint8_t vScaleFactor;
 
     if (newSpeed == 0)
     {
       // changing direction at standstill
-      if (currentPwm == 0) changeLight = true;
+      if (currentStep == 0) changeLight = true;
 
       // emergency stop
-      currentPwm = 0;
-      targetPwm = 0;
+      currentStep = 0;
+      targetStep = 0;
 
       #ifdef DEBUG_DEACCELERATION
-      Serial.print(" currentPwm: ");
-      Serial.println(currentPwm,DEC);
+      Serial.print(" motorPwm: ");
+      Serial.println(0,DEC);
       #endif
 
       digitalWrite(MOTOR_PIN_REV, LOW);
@@ -191,25 +239,14 @@ void notifyDccSpeed( uint16_t Addr, DCC_ADDR_TYPE AddrType, uint8_t newSpeed, DC
     else if (newSpeed == 1)
     {
       // changing direction at standstill
-      if (currentPwm == 0) changeLight = true;
+      if (currentStep == 0) changeLight = true;
 
-      targetPwm = 0;
+      targetStep = 0;
     }
     else
     {
-      if((vHigh > 1) && (vHigh > vStart))
-        vScaleFactor = vHigh - vStart;
-      else
-        vScaleFactor = 255 - vStart;
-
-      uint8_t modSpeed = newSpeed - 1;
-      uint8_t modSteps = numSpeedSteps - 1;
-
-      targetPwm = (int16_t) vStart + modSpeed * vScaleFactor / modSteps;
-      if (newDirection == 0) targetPwm = -targetPwm;
-
-      periodAcc = (uint16_t) Acc*896/vScaleFactor;
-      periodDec = (uint16_t) Dec*896/vScaleFactor;
+      targetStep=(newSpeed-1)*SPEED_STEPS/(numSpeedSteps-1);
+      if (newDirection == 0) targetStep = -targetStep;
 
       #ifdef DEBUG_PWM
       Serial.print("New Speed: vStart: ");
@@ -222,8 +259,8 @@ void notifyDccSpeed( uint16_t Addr, DCC_ADDR_TYPE AddrType, uint8_t newSpeed, DC
       Serial.print(vScaleFactor);
       Serial.print(" modSteps: ");
       Serial.print(modSteps);
-      Serial.print(" newPwm: ");
-      Serial.println(targetPwm);
+      Serial.print(" targetStep: ");
+      Serial.println(targetStep);
       #endif
 
     }
@@ -293,7 +330,7 @@ void setup()
 {
   #ifdef DEBUG_PRINT
   Serial.begin(115200);
-  Serial.println("NMRA Dcc Multifunction Motor Decoder Demo");
+  Serial.println("NMRA Dcc Multifunction Motor Decoder");
   #endif
 
   // Setup the Pins for the Fwd/Rev LED for Function 0 Headlight
@@ -312,14 +349,20 @@ void setup()
   Dcc.init( MAN_ID_DIY, 1, FLAGS_MY_ADDRESS_ONLY | FLAGS_AUTO_FACTORY_DEFAULT, 0 );
 
   // trigger decoder master reset
-  if(Dcc.getCV(CV_DECODER_MASTER_RESET) == CV_DECODER_MASTER_RESET) notifyCVResetFactoryDefault();
+//  if(Dcc.getCV(CV_DECODER_MASTER_RESET) == CV_DECODER_MASTER_RESET) notifyCVResetFactoryDefault();
   
   // Read the current CV values
   vStart = Dcc.getCV(CV_VSTART);
-  Acc = Dcc.getCV(CV_ACCELERATION_RATE);
-  Dec = Dcc.getCV(CV_DECELERATION_RATE);
+  speedTable[0] = Dcc.getCV(CV_VSTART);
+  periodAcc = (uint16_t) Dcc.getCV(CV_ACCELERATION_RATE)*896/SPEED_STEPS;
+  periodDec = (uint16_t) Dcc.getCV(CV_DECELERATION_RATE)*896/SPEED_STEPS;
   vHigh = Dcc.getCV(CV_VHIGH);
+  vMid = Dcc.getCV(CV_VMID);
   Timeout = Dcc.getCV(CV_SIGNAL_TIMEOUT);
+  if((Dcc.getCV(CV_29_CONFIG) & 0b00010000) == 0) speedTableSelect = false;
+  else speedTableSelect = true;
+
+  for(uint8_t i = 0; i < 28; i++) speedTable[i+1] = Dcc.getCV(CV_SPEED_TABLE + i);
 }
 
 void loop()
@@ -331,13 +374,13 @@ void loop()
   if (millis() > timeSignal)
   {
   // emergency stop
-  currentPwm = 0;
-  targetPwm = 0;
+  currentStep = 0;
+  targetStep = 0;
   lastSpeed = 0;
 
   #ifdef DEBUG_DEACCELERATION
-  Serial.print(" currentPwm: ");
-  Serial.println(currentPwm,DEC);
+  Serial.print(" motorPwm: ");
+  Serial.println(0,DEC);
   #endif
 
   digitalWrite(MOTOR_PIN_REV, LOW);
@@ -347,56 +390,84 @@ void loop()
   }
 
   // Handle Speed changes
-  if((currentPwm != targetPwm) && (millis() >= timePwm))
+  if((currentStep != targetStep) && (millis() >= timePwm))
   {
-    // by default acclerating
-    timePwm = millis() + periodAcc;
-    if (targetPwm > currentPwm)
+    if (targetStep > currentStep)
     {
-      if(currentPwm == -vStart) currentPwm=0;
-      else if (currentPwm == 0)
+      currentStep++;
+      if (currentStep > 0)
       {
-        currentPwm = vStart;
-        // changing direction at standstill
-        changeLight = true;
+        timePwm = millis() + periodAcc;
       }
       else
       {
-        currentPwm++;
-        // actually decelerating
-        if (currentPwm < 0) timePwm = millis() + periodDec;
+        timePwm = millis() + periodDec;
       }
     }
-    else // targetPwm < currentPwm
+    else // targetStep < currentStep
     {
-      if(currentPwm == vStart) currentPwm=0;
-      else if (currentPwm == 0)
+      currentStep--;
+      if (currentStep < 0)
       {
-        currentPwm = -vStart;
-        // changing direction at standstill
-        changeLight = true;
+        timePwm = millis() + periodAcc;
       }
       else
       {
-        currentPwm--;
-        // actually decelerating
-        if (currentPwm > 0) timePwm = millis() + periodDec;
+        timePwm = millis() + periodDec;
       }
     }
+
+    absStep = abs(currentStep);
+    if(absStep == 0)
+    {
+      motorPwm = 0;
+      changeLight = true;
+    }
+    else if(speedTableSelect)
+    {
+      tableElement = trunc(currentStep/9);
+      motorPwm = (uint8_t) speedTable[tableElement] + (absStep - 9 * tableElement) * (speedTable[tableElement+1] - speedTable[tableElement]) / 9;
+    }
+    else if ((vMid > 0) && (vMid > vStart) && (vHigh > vMid))
+    {
+      if (absStep < SPEED_STEPS/2)
+      {
+        motorPwm = (uint8_t) vStart + (uint16_t) (vMid - vStart) * absStep/(SPEED_STEPS/2);
+      }
+      else
+      {
+        motorPwm = (uint8_t) vMid + (uint16_t) (vHigh - vMid) * (absStep-SPEED_STEPS/2)/(SPEED_STEPS/2);
+      }
+    }
+    else if ((vHigh > 0) && (vHigh > vStart))
+    {
+      motorPwm = (uint8_t) vStart + (uint16_t) (vHigh - vStart) * absStep/SPEED_STEPS;
+    }
+    else
+    {
+      motorPwm = (uint8_t) vStart + (255 - vStart) * absStep/SPEED_STEPS;
+    }
+
     #ifdef DEBUG_DEACCELERATION
-    Serial.print(" currentPwm: ");
-    Serial.println(currentPwm,DEC);
+    Serial.print(" vMid: ");
+    Serial.print(vMid,DEC);
+    Serial.print(" vHigh: ");
+    Serial.print(vHigh,DEC);
+    Serial.print(" motorPwm: ");
+    Serial.print(motorPwm,DEC);
+    Serial.print(" currentStep: ");
+    Serial.println(currentStep,DEC);
     #endif
 
-    if (currentPwm > 0)
+    if (currentStep > 0)
     {
       digitalWrite(MOTOR_PIN_REV, LOW);
-      analogWrite(MOTOR_PIN_FWD, currentPwm);
+      analogWrite(MOTOR_PIN_FWD, motorPwm);
     }
-    else if (currentPwm < 0)
+    else if (currentStep < 0)
     {
       digitalWrite(MOTOR_PIN_FWD, LOW);
-      analogWrite(MOTOR_PIN_REV, -currentPwm);    
+      analogWrite(MOTOR_PIN_REV, motorPwm);    
     }
     else
     {
@@ -413,12 +484,12 @@ void loop()
       #ifdef DEBUG_FUNCTIONS
       Serial.println("LED On");
       #endif
-      if(currentPwm == 0)
+      if(currentStep == 0)
       {
         digitalWrite(LED_PIN_FWD, lastDirection ? HIGH : LOW);
         digitalWrite(LED_PIN_REV, lastDirection ? LOW : HIGH);
       }
-      else if(currentPwm > 0)
+      else if(currentStep > 0)
       {
         digitalWrite(LED_PIN_FWD, HIGH);
         digitalWrite(LED_PIN_REV, LOW);
