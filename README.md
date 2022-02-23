@@ -9,7 +9,7 @@ So far, two decoders have been designed:
 
 1. **Basic Accessory Turnout Decoder**: the idea is to have a miniature decoder attached to each individual turnout. The decoder is to draw power and commands directly from the turnout tracks. This is useful for those model railroaders who do not have a fixed and permanent layout so that the position of a single turnout can change.
 ![dt1](https://user-images.githubusercontent.com/18025812/131260893-7c2ca922-2275-4c6e-8305-605aa7da473d.png)
-![dt1_pcb](https://user-images.githubusercontent.com/18025812/133302838-1e73dd06-535a-4579-9187-ca837db30098.png)
+![dl1_pcb](https://user-images.githubusercontent.com/18025812/155277544-3dca0712-296e-4f45-b6c4-4d59c57914d5.png)
 
 For more instructions, please refer to [this forum entry](https://forum.mrhmag.com/post/miniature-turnout-decoder-12219236).
 
