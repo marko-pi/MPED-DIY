@@ -1,7 +1,7 @@
 // MPED DIY: Basic Accessory Turnout Decoder
 //
-// Version: 1.0
-// Authors: Alex Shepherd, Marko Pinteric 2021-09-08.
+// Version: 2.0
+// Authors: Alex Shepherd, Marko Pinteric 2022-11-18.
 // 
 // This sketch requires the NmraDcc & elapsedMillis Libraries (& ATtinySerialOut library for ATtiny debugging), which can be found and installed via the Arduino IDE Library Manager.
 //
@@ -17,11 +17,11 @@
 
 // Uncomment the next lines to enable led signalling, jumper programming and debugging.  Up to two options can be enabled for ATtiny due to limited number of pins:
 // selection   NONE        LED         JUMP        DEBUG       LED+JUMP    LED+DEBUG   JUMP+DEBUG
-// pin 3       --          led         jump        --          jump        led         jump
-// pin 4       --          led         --          debug       led         debug       debug
-//#define ENABLE_LED
+// pin 3       --          led         jump        --          jump        debug         jump
+// pin 4       --          led         --          debug       led         led           debug
+#define ENABLE_LED
 #define ENABLE_JUMP
-#define ENABLE_DEBUG
+//#define ENABLE_DEBUG
 
 #define DCC_PIN                             2
 #define DEFAULT_DECODER_ADDRESS             1
@@ -34,11 +34,14 @@
 #define PIN_THROW 1                    // pin to throw turnout
 #define LED_CLOSE 3                    // pin to power close LED
 #define LED_THROW 4                    // pin to power throw LED
-#define PIN_JUMP  LED_CLOSE            // pin for jumper programming
-#define PIN_DEBUG LED_THROW            // pin for debugging
+#define PIN_JUMP  3                    // pin for jumper programming
 #define ENABLE_DCC_ACK_PIN  PIN_CLOSE  // pin to generate a DCC ACK Pulse
 #ifdef ENABLE_DEBUG
-#define TX_PIN PIN_DEBUG
+#ifdef ENABLE_LED
+#define TX_PIN    3                    // pin for debugging
+#else
+#define TX_PIN    4                    // pin for debugging
+#endif
 #include <ATtinySerialOut.hpp>
 #endif 
 #endif 
@@ -76,7 +79,7 @@ enum DECODER_STATE
 // CV Addresses we will be using
 #define CV_CLOSE_PERIOD           33           // CV address for close period in cs
 #define CV_THROW_PERIOD           34           // CV address for throw period in cs
-#define CV_BLINK_PERIOD           35           // CV address for blink period in cs
+#define CV_BLINK_PERIOD           35           // CV address for blink period in cs, value=255 both LEDs off, value=0 both LEDS on
 #define CV_ALT_OPS_MODE_MULTIFUNCTION_ADDR 121 // CV address for the Alternative Ops Mode Multifunction Decoder Address Base for alternate OPS Mode Programming via Multifunction protocol.
 
 // Default CV Values Table; CV7, CV8 and CV8 = 8 master reset already implemented in NmraDcc
@@ -88,7 +91,7 @@ CVPair FactoryDefaultCVs [] =
   {CV_29_CONFIG, CV29_ACCESSORY_DECODER | CV29_OUTPUT_ADDRESS_MODE},
   {CV_CLOSE_PERIOD, 5},
   {CV_THROW_PERIOD, 5},
-  {CV_BLINK_PERIOD, 25},
+  {CV_BLINK_PERIOD, 0},
   {CV_ALT_OPS_MODE_MULTIFUNCTION_ADDR,     ALT_OPS_MODE_MULTIFUNCTION_ADDRESS & 0xFF },
   {CV_ALT_OPS_MODE_MULTIFUNCTION_ADDR + 1,(ALT_OPS_MODE_MULTIFUNCTION_ADDRESS >> 8) & 0x3F },
 };
@@ -154,12 +157,10 @@ extern void notifyDccAccTurnoutOutput( uint16_t Addr, uint8_t Direction, uint8_t
     if (Direction==0)
     {
 #ifdef ENABLE_LED
-#if defined ARDUINO_AVR_UNO || defined ARDUINO_AVR_MINI || (defined ARDUINO_AVR_ATTINYX5 && !defined ENABLE_JUMP)
+#if defined ARDUINO_AVR_UNO || defined ARDUINO_AVR_MINI || (defined ARDUINO_AVR_ATTINYX5 && !defined ENABLE_DEBUG && !defined ENABLE_JUMP)
       digitalWrite(LED_CLOSE, LOW);
 #endif
-#if defined ARDUINO_AVR_UNO || defined ARDUINO_AVR_MINI || (defined ARDUINO_AVR_ATTINYX5 && !defined ENABLE_DEBUG)
       digitalWrite(LED_THROW, HIGH);
-#endif
 #endif
 
       digitalWrite(PIN_CLOSE, LOW);
@@ -171,10 +172,8 @@ extern void notifyDccAccTurnoutOutput( uint16_t Addr, uint8_t Direction, uint8_t
     else
     {
 #ifdef ENABLE_LED
-#if defined ARDUINO_AVR_UNO || defined ARDUINO_AVR_MINI || (defined ARDUINO_AVR_ATTINYX5 && !defined ENABLE_DEBUG)
       digitalWrite(LED_THROW, LOW);
-#endif
-#if defined ARDUINO_AVR_UNO || defined ARDUINO_AVR_MINI || (defined ARDUINO_AVR_ATTINYX5 && !defined ENABLE_JUMP)
+#if defined ARDUINO_AVR_UNO || defined ARDUINO_AVR_MINI || (defined ARDUINO_AVR_ATTINYX5 && !defined ENABLE_DEBUG && !defined ENABLE_JUMP)
       digitalWrite(LED_CLOSE, HIGH);
 #endif
 #endif
@@ -184,6 +183,11 @@ extern void notifyDccAccTurnoutOutput( uint16_t Addr, uint8_t Direction, uint8_t
 
       TurnoutOnMillis = per_close * 10;
       DecoderState = DS_Closed;
+    }
+    // prevent infinite turnout pulse
+    if (!TurnoutOnMillis)
+    {
+    TurnoutOnMillis = 1;  
     }
 #ifdef ENABLE_DEBUG
     Serial.print(F("notifyDccAccTurnoutOutput: TurnoutOnMillis: ")); Serial.println(TurnoutOnMillis);
@@ -219,14 +223,12 @@ void setup()
 
   // Setup the Pins for the direction LEDs. Set the desired pin state first before making it an output to avoid any glitch on start
 #ifdef ENABLE_LED
-#if defined ARDUINO_AVR_UNO || defined ARDUINO_AVR_MINI || (defined ARDUINO_AVR_ATTINYX5 && !defined ENABLE_JUMP)
+#if defined ARDUINO_AVR_UNO || defined ARDUINO_AVR_MINI || (defined ARDUINO_AVR_ATTINYX5 && !defined ENABLE_DEBUG && !defined ENABLE_JUMP)
   digitalWrite(LED_CLOSE, LOW);
   pinMode(LED_CLOSE, OUTPUT);
 #endif
-#if defined ARDUINO_AVR_UNO || defined ARDUINO_AVR_MINI || (defined ARDUINO_AVR_ATTINYX5 && !defined ENABLE_DEBUG)
   digitalWrite(LED_THROW, LOW);
   pinMode(LED_THROW, OUTPUT);
-#endif
 #endif
 
 #ifdef ENABLE_JUMP
@@ -300,19 +302,21 @@ void loop()
 #endif
 
 #ifdef ENABLE_LED
-  if(DecoderState == DS_Unknown and per_blink > 0)
+#if defined ENABLE_DEBUG || defined ENABLE_JUMP
+  if(DecoderState == DS_Unknown)
+#else
+  if(DecoderState == DS_Unknown and per_blink != 255)
+#endif
   {
     if(LEDBlinkTimer >= (per_blink * 10))
     {
       LEDBlinkTimer = 0;
 
-#if defined ARDUINO_AVR_UNO || defined ARDUINO_AVR_MINI || (defined ARDUINO_AVR_ATTINYX5 && !defined ENABLE_JUMP)
+#if defined ARDUINO_AVR_UNO || defined ARDUINO_AVR_MINI || (defined ARDUINO_AVR_ATTINYX5 && !defined ENABLE_DEBUG && !defined ENABLE_JUMP)
       digitalWrite(LED_CLOSE, LEDBlinkState);
 #endif
       LEDBlinkState = !LEDBlinkState;
-#if defined ARDUINO_AVR_UNO || defined ARDUINO_AVR_MINI || (defined ARDUINO_AVR_ATTINYX5 && !defined ENABLE_DEBUG)
       digitalWrite(LED_THROW, LEDBlinkState);
-#endif
     }
   }
 #endif
