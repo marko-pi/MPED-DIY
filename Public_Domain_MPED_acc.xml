@@ -15,7 +15,7 @@
 	<version version="1" author="marko@pinteric.com" lastUpdated="20200908"/>
 	<decoder>
 		<family name="MPED DIY" mfg="Public-domain and DIY" lowVersionID="1" comment="DCC Accessory Decoder for a single Turnout" >
-			<model model="Basic Accessory Turnout Decoder" />
+			<model model="MPED Basic Turnout" />
 		</family>
 		<programming direct="yes" paged="yes" register="yes" ops="yes" >
 			<capability>
