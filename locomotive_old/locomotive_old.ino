@@ -1,7 +1,7 @@
 // MPED DIY: Basic Multifunction Locomotive Decoder
 //
-// Version: 2.0
-// Author: Marko Pinteric 2021-2025.
+// Version: 1.0
+// Author: Marko Pinteric 2021-08-30.
 // Based on the work by Alex Shepherd.
 // 
 // This sketch requires the NmraDcc Library, which can be found and installed via the Arduino IDE Library Manager.
@@ -13,19 +13,43 @@
 
 #include <NmraDcc.h>
 
-// PLEASE NOTE THAT THIS IS VERSION 2, WHERE THE PINS FOR MOTOR AND LIGHT DRIVE HAVE BEEN CHANGED TO AVOID TIMER0.
-// IT HAS NOT BEEN TESTED YET, BUT SINCE THE CHANGES ARE RELATIVELY MINOR, IT SHOULD WORK.
-
-// brake: default state for the motor drive is HIGH-HIGH, recommended by the DRV8870 manual
-// coast: default state for the motor drive is LOW-LOW
+// brake: default state for the motor control is HIGH-HIGH, recommended by the DRV8870 manual
+// coast: default state for the motor control is LOW-LOW
 #define brake
 
-// There are five frequencies to choose from for the motor drive, uncomment one of them
-#define motordrive B00000001  // PWM frequency of 31372.55 Hz (inaudible)
-//#define motordrive B00000010  // PWM frequency of 3921.16 Hz (audible, not recommended)
-//#define motordrive B00000011  // PWM frequency of 490.20 Hz (default, audible, not recommended)
-//#define motordrive B00000100  // PWM frequency of 122.55 Hz (audible, not recommended)
-//#define motordrive B00000101  // PWM frequency of 30.64 Hz (inaudible)
+// PLEASE NOTE THAT THIS IS VERSION 1, WHERE THE PINS FOR THE MOTOR DRIVE USE TIMER0.
+// THIS MEANS THAT IF YOU CHANGE THE PWM FREQUENCY OF THE MOTOR DRIVE, THIS WILL ALSO AFFECT ALL TIME MEASUREMENTS.
+// IF YOU CHANGE PWM FREQUENCY OF MOTOR DRIVE, ALL INSTANCES THAT MEASURE TIME IN THIS SCRIPT AND IN THE NMRADCC LIBRARY MUST BE CHANGED.
+
+// #############################################################################################
+// ## First select the PWM frequency below, then edit NmraDcc.cpp and change all instances of ##
+// ## micros() with micros()/64  and millis() with millis()/64  for 62500.00 Hz               ##
+// ## micros() with micros()/8   and millis() with millis()/8   for 7812.50 Hz                ##
+// ## micros() with micros()*4   and millis() with millis()*4   for 244.14 Hz                 ##
+// #############################################################################################
+
+// There are four frequencies to choose from for the motor drive, uncomment one of them
+#define motordrive B00000001  // PWM frequency of 62500.00 Hz (inaudible, recommended)
+//#define motordrive B00000010  // PWM frequency of 7812.50 Hz (audible, not recommended)
+//#define motordrive B00000011  // PWM frequency of 976.56 Hz (default, audible, not recommended)
+//#define motordrive B00000100  // PWM frequency of 244.14 Hz (audible, not recommended)
+
+#if motordrive==B00000001
+  #define miltime millis()/64
+  #define timedelay 6*64
+#endif
+#if motordrive==B00000010
+  #define miltime millis()/16
+  #define timedelay 6*16
+#endif
+#if motordrive==B00000011
+  #define miltime millis()
+  #define timedelay 6
+#endif
+#if motordrive==B00000100
+  #define miltime millis()*4
+  #define timedelay 6/4
+#endif
 
 // Uncomment any of the lines below to enable debug messages for different parts of the code
 //#define DEBUG_FUNCTIONS
@@ -51,10 +75,10 @@
 
   #define DCC_PIN       2
 
-  #define LED_PIN_FWD   3
-  #define LED_PIN_REV   11
-  #define MOTOR_PIN_FWD 9
-  #define MOTOR_PIN_REV 10
+  #define LED_PIN_FWD   9
+  #define LED_PIN_REV  10
+  #define MOTOR_PIN_FWD 5
+  #define MOTOR_PIN_REV 6
 
 // This section defines the Arduino ATTiny85 Pins to use 
 #elif defined(ARDUINO_AVR_ATTINYX5) 
@@ -214,7 +238,7 @@ void notifyCVResetFactoryDefault()
 // This call-back function is called whenever we receive a DCC Speed packet for our address 
 void notifyDccSpeed( uint16_t Addr, DCC_ADDR_TYPE AddrType, uint8_t newSpeed, DCC_DIRECTION newDirection, DCC_SPEED_STEPS numSpeedSteps )
 {
-  if (Timeout != 0) timeSignal = millis() + 1000 * Timeout;
+  if (Timeout != 0) timeSignal = miltime + 1000 * Timeout;
 
   #ifdef DEBUG_SPEED
     Serial.print("notifyDccSpeed: Addr: ");
@@ -287,7 +311,7 @@ void notifyDccSpeed( uint16_t Addr, DCC_ADDR_TYPE AddrType, uint8_t newSpeed, DC
 
     }
     // change PWM immediately
-    timePwm = millis();
+    timePwm = miltime;
 
     lastSpeed = newSpeed;
     lastDirection = newDirection;
@@ -347,7 +371,7 @@ void notifyCVAck(void)
     digitalWrite(MOTOR_PIN_FWD, HIGH);
   #endif
 
-  delay( 6 );  
+  delay( timedelay );  
 
   #ifdef brake
     digitalWrite(MOTOR_PIN_REV, HIGH);
@@ -364,7 +388,7 @@ void setup()
   #endif
 
   // change PWM frequency of the motor drive
-  TCCR1B = TCCR1B & B11111000 | motordrive;
+  TCCR0B = TCCR0B & B11111000 | motordrive;
 
   // Setup the Pins for the Fwd/Rev LED for Function 0 Headlight
   pinMode(LED_PIN_FWD, OUTPUT);
@@ -413,7 +437,7 @@ void loop()
   Dcc.process();
 
   // Handle lost Signal
-  if (millis() > timeSignal)
+  if (miltime > timeSignal)
   {
     // emergency stop
     currentStep = 0;
@@ -441,18 +465,18 @@ void loop()
   }
 
   // Handle Speed changes
-  if((currentStep != targetStep) && (millis() >= timePwm))
+  if((currentStep != targetStep) && (miltime >= timePwm))
   {
     if (targetStep > currentStep)
     {
       currentStep++;
       if (currentStep > 0)
       {
-        timePwm = millis() + periodAcc;
+        timePwm = miltime + periodAcc;
       }
       else
       {
-        timePwm = millis() + periodDec;
+        timePwm = miltime + periodDec;
       }
     }
     else // targetStep < currentStep
@@ -460,11 +484,11 @@ void loop()
       currentStep--;
       if (currentStep < 0)
       {
-        timePwm = millis() + periodAcc;
+        timePwm = miltime + periodAcc;
       }
       else
       {
-        timePwm = millis() + periodDec;
+        timePwm = miltime + periodDec;
       }
     }
 
